@@ -32,6 +32,13 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# ...but the template belongs in the repo, so contributors know what to set.
+!.env.example
+
+# AI assistant instructions — local tooling config, not part of the project
+AGENTS.md
+CLAUDE.md
+.claude/
 
 # vercel
 .vercel

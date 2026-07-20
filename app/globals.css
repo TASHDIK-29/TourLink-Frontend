@@ -1,26 +1,125 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #1c1917;
+  --muted: #f5f5f4;
+  --muted-foreground: #78716c;
+  --card: #ffffff;
+  --border: #e7e5e4;
+  --input: #e7e5e4;
+  --ring: #f43f5e;
+  --primary: #e11d48;
+  --primary-hover: #be123c;
+  --primary-foreground: #ffffff;
+  --accent: #0f766e;
+  --destructive: #dc2626;
+
+  /* ---- Chart tokens -------------------------------------------------------
+   * Kept separate from the brand tokens above: the brand rose (#e11d48) is a
+   * UI accent, not a validated data-viz hue. These are the reference data-viz
+   * palette, re-validated against THIS app's card surfaces (#ffffff light /
+   * #171412 dark) rather than the palette's own defaults.
+   *
+   * `--chart-series` is the single sequential hue used for every bar in a
+   * nominal comparison — one series, one color. Never a value-ramp across
+   * categories (that would double-encode bar length as hue).
+   *
+   * The status four are fixed and never themed. Segment ORDER matters: they
+   * are stacked good → warning → critical → serious, which is the ordering
+   * that clears both the CVD (worst adjacent ΔE 11.3) and normal-vision
+   * (15.7) separation gates. Stacking warning beside serious fails the
+   * normal-vision floor at 13.6, so don't reorder them.
+   * On the light surface warning and serious sit below 3:1 by design — the
+   * mitigation is the visible label + legend + table view each chart ships.
+   */
+  --chart-series: #2a78d6;
+  --chart-good: #0ca30c;
+  --chart-warning: #fab219;
+  --chart-critical: #d03b3b;
+  --chart-serious: #ec835a;
+  --chart-neutral: #898781;
+  --chart-grid: #e1e0d9;
+  --chart-axis: #c3c2b7;
+  --chart-ink-muted: #898781;
+  --chart-surface: #ffffff;
+}
+
+.dark {
+  --background: #0c0a09;
+  --foreground: #fafaf9;
+  --muted: #1c1917;
+  --muted-foreground: #a8a29e;
+  --card: #171412;
+  --border: #292524;
+  --input: #292524;
+  --ring: #fb7185;
+  --primary: #f43f5e;
+  --primary-hover: #e11d48;
+  --primary-foreground: #ffffff;
+  --accent: #2dd4bf;
+  --destructive: #ef4444;
+
+  /* Dark steps are SELECTED for the dark surface, not an automatic flip. The
+   * status four are mode-invariant (all clear 3:1 on #171412); only the
+   * sequential hue and the chrome re-step. */
+  --chart-series: #3987e5;
+  --chart-good: #0ca30c;
+  --chart-warning: #fab219;
+  --chart-critical: #d03b3b;
+  --chart-serious: #ec835a;
+  --chart-neutral: #898781;
+  --chart-grid: #2c2c2a;
+  --chart-axis: #383835;
+  --chart-ink-muted: #898781;
+  --chart-surface: #171412;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-card: var(--card);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-accent: var(--accent);
+  --color-destructive: var(--destructive);
+
+  --font-sans: var(--font-sans);
+
+  --radius-card: 0.875rem;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  }
+
+  /* Airbnb-style focus ring: keyboard nav only. */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer utilities {
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
 }
