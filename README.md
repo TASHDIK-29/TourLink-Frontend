@@ -9,6 +9,31 @@ MongoDB API — see [Tour-Management-Backend](https://github.com/TASHDIK-29/Tour
 
 ---
 
+## 🔑 Try it yourself — demo Admin login
+
+This is a portfolio project, and the fastest way to see everything it does is
+to sign in as an admin — no registration needed.
+
+| | |
+|---|---|
+| **Email** | `super@gmail.com` |
+| **Password** | `12345678` |
+
+This is a **seeded Super Admin account** with full access. After logging in
+you'll be taken straight to the **admin dashboard** (`/admin`), where you can:
+
+- View the **analytics dashboard** — revenue, bookings, payments, top tours
+- Create/edit/delete **tours**, **divisions** and **tour types**
+- Review guide applications and **approve/reject** them
+- See every **booking**, assign or reassign a guide, and confirm a completed
+  guiding
+
+You're also welcome to register your own account with **Register** to try the
+traveller side (browsing, booking, becoming a guide) end to end — everything
+here runs on demo data, so feel free to click around freely.
+
+---
+
 ## Tech stack
 
 | Area | Choice |
@@ -49,7 +74,16 @@ MongoDB API — see [Tour-Management-Backend](https://github.com/TASHDIK-29/Tour
   Every chart has a **table view**, so no value is reachable only by hovering.
 - **Catalogue management** — tours (with multi-image upload), divisions and tour
   types, all with search, pagination and delete confirmation.
-- **Bookings** — all bookings with status filter and admin status override.
+- **Bookings** — all bookings with status filter, pagination, guide
+  assign/reassign and guiding confirmation.
+- **Guide applications** — review, approve or reject travellers applying to
+  become guides; approval promotes their account to the `GUIDE` role.
+
+### Guide
+- A `GUIDE`-role user gets their own dashboard: guiding stats (completed
+  guidings, tier, earnings) and the list of trips they're assigned to lead.
+  Reach this role by applying from the traveller dashboard and having an admin
+  approve the application.
 
 ---
 
@@ -205,10 +239,16 @@ Two rules are load-bearing and commented at the definition:
 
 ## Placeholder content
 
-The home page's **reviews** and **guides** sections are **fabricated** — the API
-has no review module and no guide profiles. They are paired by index with real
-tours and divisions so the catalogue stays truthful, and use initials avatars
-rather than stock photos. Both files carry a warning header.
+The home page's **reviews** section is **fabricated** — there is no review
+module in the API. It's paired by index with real tours so the catalogue stays
+truthful, and uses initials avatars rather than stock photos. The file carries
+a warning header.
 
-**Replace them before this faces real customers** — invented testimonials read
-as genuine feedback.
+The home page's **guides showcase** carousel is likewise cosmetic placeholder
+copy — but note this is different from the **actual guide system**, which is
+real and functional: applying to become a guide, admin approval, automatic
+guide assignment on booking, and the guide's own dashboard all work against
+live data (see the Admin/Guide feature lists above).
+
+**Replace the reviews section before this faces real customers** — invented
+testimonials read as genuine feedback.
