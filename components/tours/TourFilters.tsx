@@ -1,8 +1,10 @@
 "use client";
 
+import { format } from "date-fns";
 import { SlidersHorizontal, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import { Select } from "@/components/ui/Select";
+import { SelectMenu } from "@/components/ui/SelectMenu";
+import { RangeCalendar, type DateRange } from "@/components/ui/RangeCalendar";
 import { useGetDivisionsQuery } from "@/redux/features/division/divisionApi";
 import {
   getTourTypeName,
@@ -20,7 +22,12 @@ export interface TourFilterState {
   division: string;
   tourType: string;
   sort: string;
+  dateFrom: string;
+  dateTo: string;
 }
+
+const parseDate = (s: string) => (s ? new Date(`${s}T00:00:00`) : undefined);
+const fmt = (d?: Date) => (d ? format(d, "yyyy-MM-dd") : "");
 
 export function TourFilters({
   value,
@@ -36,7 +43,14 @@ export function TourFilters({
   const { data: divisions } = useGetDivisionsQuery();
   const { data: tourTypes } = useGetTourTypesQuery();
 
-  const hasFilters = Boolean(value.division || value.tourType);
+  const hasFilters = Boolean(
+    value.division || value.tourType || value.dateFrom || value.dateTo,
+  );
+
+  const range: DateRange = {
+    from: parseDate(value.dateFrom),
+    to: parseDate(value.dateTo),
+  };
 
   return (
     <aside className="rounded-card border border-border bg-card p-5">
@@ -57,43 +71,44 @@ export function TourFilters({
       </div>
 
       <div className="space-y-4">
-        <Select
+        <SelectMenu
           label="Destination"
           value={value.division}
-          onChange={(e) => onChange({ division: e.target.value })}
-        >
-          <option value="">Anywhere</option>
-          {divisions?.map((d) => (
-            <option key={d._id} value={d._id}>
-              {d.name}
-            </option>
-          ))}
-        </Select>
+          onValueChange={(v) => onChange({ division: v })}
+          options={[
+            { value: "", label: "Anywhere" },
+            ...(divisions ?? []).map((d) => ({ value: d._id, label: d.name })),
+          ]}
+        />
 
-        <Select
+        <SelectMenu
           label="Tour type"
           value={value.tourType}
-          onChange={(e) => onChange({ tourType: e.target.value })}
-        >
-          <option value="">Any type</option>
-          {tourTypes?.map((t) => (
-            <option key={t._id} value={t._id}>
-              {getTourTypeName(t) || "(unnamed)"}
-            </option>
-          ))}
-        </Select>
+          onValueChange={(v) => onChange({ tourType: v })}
+          options={[
+            { value: "", label: "Any type" },
+            ...(tourTypes ?? []).map((t) => ({
+              value: t._id,
+              label: getTourTypeName(t) || "(unnamed)",
+            })),
+          ]}
+        />
 
-        <Select
+        <RangeCalendar
+          label="Travel dates"
+          value={range}
+          placeholder="Any dates"
+          onChange={(r) =>
+            onChange({ dateFrom: fmt(r.from), dateTo: fmt(r.to) })
+          }
+        />
+
+        <SelectMenu
           label="Sort by"
           value={value.sort}
-          onChange={(e) => onChange({ sort: e.target.value })}
-        >
-          {SORT_OPTIONS.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </Select>
+          onValueChange={(v) => onChange({ sort: v })}
+          options={SORT_OPTIONS}
+        />
       </div>
 
       {resultsLabel && (

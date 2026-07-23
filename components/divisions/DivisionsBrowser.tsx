@@ -2,21 +2,22 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useMemo } from "react";
 import { motion } from "framer-motion";
-import { ArrowRight, MapPin, Search } from "lucide-react";
+import { ArrowRight, MapPin } from "lucide-react";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { Combobox } from "@/components/ui/Combobox";
 import { useGetDivisionsQuery } from "@/redux/features/division/divisionApi";
 import { useGetToursQuery } from "@/redux/features/tour/tourApi";
 
 export function DivisionsBrowser() {
+  const router = useRouter();
   const { data: divisions, isLoading } = useGetDivisionsQuery();
   // Tours come back with `division` as a bare id string (the backend does not
   // populate), which is exactly what we need to tally counts client-side.
   // There's no per-division count endpoint, so one wide fetch does the job.
   const { data: tourData } = useGetToursQuery({ limit: 200, fields: "division" });
-
-  const [query, setQuery] = useState("");
 
   const countByDivision = useMemo(() => {
     const counts = new Map<string, number>();
@@ -28,15 +29,15 @@ export function DivisionsBrowser() {
     return counts;
   }, [tourData]);
 
-  const filtered = useMemo(() => {
-    const term = query.trim().toLowerCase();
-    if (!term) return divisions ?? [];
-    return (divisions ?? []).filter(
-      (d) =>
-        d.name.toLowerCase().includes(term) ||
-        d.description?.toLowerCase().includes(term),
-    );
-  }, [divisions, query]);
+  const divisionOptions = useMemo(
+    () =>
+      (divisions ?? []).map((d) => ({
+        value: d._id,
+        label: d.name,
+        keywords: d.description,
+      })),
+    [divisions],
+  );
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
@@ -48,15 +49,13 @@ export function DivisionsBrowser() {
         </p>
       </header>
 
-      <div className="relative mt-6 max-w-md">
-        <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <input
-          type="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
+      <div className="mt-6 max-w-md">
+        <Combobox
+          options={divisionOptions}
+          onSelect={(id) => router.push(`/tours?division=${id}`)}
           placeholder="Search destinations"
-          aria-label="Search destinations"
-          className="h-12 w-full rounded-full border border-input bg-card pl-11 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none"
+          searchPlaceholder="Search destinations…"
+          emptyText="No destination found."
         />
       </div>
 
@@ -66,23 +65,17 @@ export function DivisionsBrowser() {
             <Skeleton key={i} className="aspect-[4/3] rounded-card" />
           ))}
         </div>
-      ) : !filtered.length ? (
+      ) : !divisions?.length ? (
         <div className="mt-8 rounded-card border border-dashed border-border bg-card p-12 text-center">
           <MapPin className="mx-auto h-8 w-8 text-muted-foreground" />
-          <h2 className="mt-3 font-semibold">
-            {divisions?.length
-              ? "No destination matches that search"
-              : "No destinations yet"}
-          </h2>
+          <h2 className="mt-3 font-semibold">No destinations yet</h2>
           <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
-            {divisions?.length
-              ? "Try a different name."
-              : "Destinations will appear here once they're added."}
+            Destinations will appear here once they&apos;re added.
           </p>
         </div>
       ) : (
         <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((division, i) => {
+          {divisions.map((division, i) => {
             const count = countByDivision.get(division._id) ?? 0;
             return (
               <motion.div

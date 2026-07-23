@@ -16,6 +16,7 @@ import {
 import { toast } from "sonner";
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { Pagination } from "@/components/ui/Pagination";
 import { ConfirmDelete } from "@/components/admin/ConfirmDelete";
 import {
   BookingStatusBadge,
@@ -30,8 +31,14 @@ import {
 import { useInitPaymentMutation } from "@/redux/features/payment/paymentApi";
 import type { IBooking } from "@/types";
 
+const PAGE_SIZE = 10;
+
 export default function MyBookingsPage() {
-  const { data, isLoading } = useGetMyBookingsQuery({ limit: 50 });
+  const [page, setPage] = useState(1);
+  const { data, isLoading } = useGetMyBookingsQuery({
+    page,
+    limit: PAGE_SIZE,
+  });
   const [updateStatus, { isLoading: cancelling }] =
     useUpdateBookingStatusMutation();
   const [initPayment] = useInitPaymentMutation();
@@ -41,6 +48,7 @@ export default function MyBookingsPage() {
   const [payingId, setPayingId] = useState<string | null>(null);
 
   const bookings = data?.bookings ?? [];
+  const totalPage = data?.meta?.totalPage ?? 1;
 
   const handlePay = async (booking: IBooking) => {
     setPayingId(booking._id);
@@ -97,17 +105,28 @@ export default function MyBookingsPage() {
           </Link>
         </div>
       ) : (
-        <ul className="space-y-4">
-          {bookings.map((booking) => (
-            <BookingCard
-              key={booking._id}
-              booking={booking}
-              onCancel={() => setToCancel(booking)}
-              onPay={() => handlePay(booking)}
-              paying={payingId === booking._id}
+        <>
+          <ul className="space-y-4">
+            {bookings.map((booking) => (
+              <BookingCard
+                key={booking._id}
+                booking={booking}
+                onCancel={() => setToCancel(booking)}
+                onPay={() => handlePay(booking)}
+                paying={payingId === booking._id}
+              />
+            ))}
+          </ul>
+
+          {totalPage > 1 && (
+            <Pagination
+              page={page}
+              totalPages={totalPage}
+              onPageChange={setPage}
+              className="mt-8"
             />
-          ))}
-        </ul>
+          )}
+        </>
       )}
 
       <ConfirmDelete

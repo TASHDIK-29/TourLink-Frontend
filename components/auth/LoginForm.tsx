@@ -70,17 +70,23 @@ export function LoginForm() {
       // Seed the store from the login payload, then reconcile with /user/me,
       // which returns the full document (login echoes the passport user).
       dispatch(setCredentials({ user, token: accessToken }));
+      let resolvedUser = user;
       try {
         const me = await fetchMe().unwrap();
         dispatch(setCredentials({ user: me }));
+        resolvedUser = me;
       } catch {
         // Non-fatal — the login payload is enough to proceed.
       }
 
       toast.success("Welcome back!");
+      // Admins land straight on their dashboard; everyone else follows the
+      // sanitised redirect (home, or the tour they came from).
       // replace, not push: the back button should not return to the login form
       // of a session that has already started.
-      router.replace(redirectTo);
+      const isAdmin =
+        resolvedUser.role === "ADMIN" || resolvedUser.role === "SUPER_ADMIN";
+      router.replace(isAdmin ? "/admin" : redirectTo);
     } catch (error) {
       const message = getApiErrorMessage(error, "Could not sign you in");
 

@@ -1,10 +1,11 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
-import { Compass, Search, X } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Compass, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
+import { Combobox } from "@/components/ui/Combobox";
 import { TourCard, TourCardSkeleton } from "./TourCard";
 import { TourFilters, MobileFilterBar, SORT_OPTIONS } from "./TourFilters";
 import { useGetToursQuery } from "@/redux/features/tour/tourApi";
@@ -20,18 +21,11 @@ export function ToursBrowser() {
   const division = searchParams.get("division") ?? "";
   const tourType = searchParams.get("tourType") ?? "";
   const sort = searchParams.get("sort") ?? DEFAULT_SORT;
+  const dateFrom = searchParams.get("dateFrom") ?? "";
+  const dateTo = searchParams.get("dateTo") ?? "";
   const page = Math.max(1, Number(searchParams.get("page")) || 1);
 
-  // Local mirror so typing feels instant; the URL updates on a debounce below.
-  const [searchInput, setSearchInput] = useState(searchTerm);
   const [filtersOpen, setFiltersOpen] = useState(false);
-
-  // Keep the box in sync when the URL changes from elsewhere (hero, back button).
-  const [lastSynced, setLastSynced] = useState(searchTerm);
-  if (lastSynced !== searchTerm) {
-    setLastSynced(searchTerm);
-    setSearchInput(searchTerm);
-  }
 
   const setParams = (patch: Record<string, string | number | undefined>) => {
     const next = new URLSearchParams(searchParams.toString());
@@ -44,13 +38,19 @@ export function ToursBrowser() {
     router.push(`/tours${next.toString() ? `?${next}` : ""}`, { scroll: false });
   };
 
-  // Debounce search so each keystroke isn't a request + history entry.
-  useEffect(() => {
-    if (searchInput === searchTerm) return;
-    const timer = setTimeout(() => setParams({ searchTerm: searchInput }), 400);
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchInput]);
+  // All tours (titles only) powering the search combobox autocomplete.
+  const { data: allTourData } = useGetToursQuery({
+    limit: 200,
+    fields: "title,slug",
+  });
+  const searchOptions = useMemo(
+    () =>
+      (allTourData?.tours ?? []).map((t) => ({
+        value: t.title,
+        label: t.title,
+      })),
+    [allTourData],
+  );
 
   const { data, isLoading, isFetching, isError } = useGetToursQuery({
     page,
@@ -59,10 +59,14 @@ export function ToursBrowser() {
     ...(searchTerm ? { searchTerm } : {}),
     ...(division ? { division } : {}),
     ...(tourType ? { tourType } : {}),
+    ...(dateFrom ? { dateFrom } : {}),
+    ...(dateTo ? { dateTo } : {}),
   });
 
   const tours = data?.tours ?? [];
-  const isFiltered = Boolean(searchTerm || division || tourType);
+  const isFiltered = Boolean(
+    searchTerm || division || tourType || dateFrom || dateTo,
+  );
 
   /*
    * Pagination is derived from the page contents, NOT meta.totalPage.
@@ -73,7 +77,9 @@ export function ToursBrowser() {
    * that come back empty. A full page implies there may be another.
    */
   const hasNextPage = tours.length === PAGE_SIZE;
-  const activeFilterCount = [division, tourType].filter(Boolean).length;
+  const activeFilterCount = [division, tourType, dateFrom || dateTo].filter(
+    Boolean,
+  ).length;
 
   const resultsLabel = isFiltered
     ? undefined // meta.total is unfiltered, so any count here would be a lie.
@@ -81,10 +87,11 @@ export function ToursBrowser() {
       ? `${data.meta.total} tour${data.meta.total === 1 ? "" : "s"} available`
       : undefined;
 
-  const filterState = { division, tourType, sort };
+  const filterState = { division, tourType, sort, dateFrom, dateTo };
   const handleFilterChange = (patch: Partial<typeof filterState>) =>
     setParams(patch);
-  const handleReset = () => setParams({ division: "", tourType: "" });
+  const handleReset = () =>
+    setParams({ division: "", tourType: "", dateFrom: "", dateTo: "" });
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
@@ -98,25 +105,26 @@ export function ToursBrowser() {
       </header>
 
       <div className="mb-6 flex flex-wrap items-center gap-3">
-        <div className="flex min-w-64 flex-1 items-center gap-2 rounded-full border border-border bg-card px-4">
-          <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
-          <input
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
+        <div className="min-w-64 flex-1">
+          <Combobox
+            options={searchOptions}
+            value={searchTerm}
+            onSelect={(v) => setParams({ searchTerm: v })}
             placeholder="Search tours, places, activities…"
-            aria-label="Search tours"
-            className="h-12 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+            searchPlaceholder="Search tours…"
+            emptyText="No tours found."
           />
-          {searchInput && (
-            <button
-              onClick={() => setSearchInput("")}
-              aria-label="Clear search"
-              className="rounded-full p-1 text-muted-foreground hover:text-foreground"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          )}
         </div>
+
+        {searchTerm && (
+          <Button
+            variant="outline"
+            onClick={() => setParams({ searchTerm: "" })}
+          >
+            <X className="h-4 w-4" />
+            Clear search
+          </Button>
+        )}
 
         <MobileFilterBar
           onOpen={() => setFiltersOpen(true)}
@@ -161,7 +169,13 @@ export function ToursBrowser() {
                   <Button
                     variant="outline"
                     onClick={() =>
-                      setParams({ searchTerm: "", division: "", tourType: "" })
+                      setParams({
+                        searchTerm: "",
+                        division: "",
+                        tourType: "",
+                        dateFrom: "",
+                        dateTo: "",
+                      })
                     }
                   >
                     Clear all filters

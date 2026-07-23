@@ -1,30 +1,62 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
+import { format } from "date-fns";
 import { Search } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { Combobox } from "@/components/ui/Combobox";
+import { SelectMenu } from "@/components/ui/SelectMenu";
+import { RangeCalendar, type DateRange } from "@/components/ui/RangeCalendar";
 import { useGetDivisionsQuery } from "@/redux/features/division/divisionApi";
+import { useGetToursQuery } from "@/redux/features/tour/tourApi";
 
 export function Hero() {
   const router = useRouter();
   const { data: divisions } = useGetDivisionsQuery();
+  // Lightweight list of tours to power the search combobox autocomplete.
+  const { data: tourData } = useGetToursQuery({
+    limit: 200,
+    fields: "title,slug",
+  });
 
-  const [searchTerm, setSearchTerm] = useState("");
   const [division, setDivision] = useState("");
+  const [range, setRange] = useState<DateRange>({});
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
+  const tourOptions = useMemo(
+    () =>
+      (tourData?.tours ?? []).map((t) => ({
+        value: t.slug,
+        label: t.title,
+      })),
+    [tourData],
+  );
+
+  const divisionOptions = useMemo(
+    () => [
+      { value: "", label: "Anywhere" },
+      ...(divisions ?? []).map((d) => ({ value: d._id, label: d.name })),
+    ],
+    [divisions],
+  );
+
+  // The combobox jumps straight to a chosen tour.
+  const goToTour = (slug: string) => {
+    if (slug) router.push(`/tours/${slug}`);
+  };
+
+  // The Search button browses /tours filtered by division and/or date range.
+  const handleSearch = () => {
     const params = new URLSearchParams();
-    if (searchTerm.trim()) params.set("searchTerm", searchTerm.trim());
     if (division) params.set("division", division);
+    if (range.from) params.set("dateFrom", format(range.from, "yyyy-MM-dd"));
+    if (range.to) params.set("dateTo", format(range.to, "yyyy-MM-dd"));
     router.push(`/tours${params.toString() ? `?${params}` : ""}`);
   };
 
   return (
     <section className="relative overflow-hidden">
-      {/* Decorative gradient wash; hidden from AT since it carries no meaning. */}
       <div
         aria-hidden
         className="absolute inset-0 -z-10 bg-gradient-to-b from-primary/10 via-background to-background"
@@ -42,49 +74,61 @@ export function Hero() {
             <span className="text-primary">unforgettable</span> journey
           </h1>
           <p className="mx-auto mt-5 max-w-xl text-lg text-muted-foreground">
-            Handpicked tours across Bangladesh — from the hills of Bandarban to
-            the beaches of Cox&apos;s Bazar.
+            Handpicked tours across Bangladesh — search by trip, destination or
+            the dates you&apos;re free to travel.
           </p>
         </motion.div>
 
-        <motion.form
-          onSubmit={handleSearch}
+        <motion.div
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.15 }}
-          className="mx-auto mt-10 flex max-w-3xl flex-col gap-2 rounded-3xl border border-border bg-card p-2 shadow-lg sm:flex-row sm:items-center sm:rounded-full"
+          className="mx-auto mt-10 max-w-4xl rounded-2xl border border-border bg-card p-4 shadow-lg"
         >
-          <div className="flex flex-1 items-center gap-2 px-4">
-            <Search className="h-5 w-5 shrink-0 text-muted-foreground" />
-            <input
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search tours, places, activities…"
-              aria-label="Search tours"
-              className="h-12 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-            />
-          </div>
+          <div className="grid gap-3 md:grid-cols-[1.4fr_1fr_1.2fr_auto] md:items-end">
+            <div>
+              <span className="mb-1.5 block text-xs font-medium text-muted-foreground">
+                Tour
+              </span>
+              <Combobox
+                options={tourOptions}
+                onSelect={goToTour}
+                placeholder="Search tours…"
+                searchPlaceholder="Search tours, places…"
+                emptyText="No tours found."
+              />
+            </div>
 
-          <div className="sm:border-l sm:border-border sm:pl-2">
-            <select
-              value={division}
-              onChange={(e) => setDivision(e.target.value)}
-              aria-label="Filter by destination"
-              className="h-12 w-full cursor-pointer rounded-full bg-transparent px-4 text-sm outline-none sm:w-44"
-            >
-              <option value="">Anywhere</option>
-              {divisions?.map((d) => (
-                <option key={d._id} value={d._id}>
-                  {d.name}
-                </option>
-              ))}
-            </select>
-          </div>
+            <div>
+              <span className="mb-1.5 block text-xs font-medium text-muted-foreground">
+                Destination
+              </span>
+              <SelectMenu
+                value={division}
+                onValueChange={setDivision}
+                options={divisionOptions}
+                aria-label="Filter by destination"
+              />
+            </div>
 
-          <Button type="submit" size="lg" className="sm:px-8">
-            Search
-          </Button>
-        </motion.form>
+            <div>
+              <span className="mb-1.5 block text-xs font-medium text-muted-foreground">
+                When
+              </span>
+              <RangeCalendar
+                value={range}
+                onChange={setRange}
+                placeholder="Any dates"
+                align="end"
+              />
+            </div>
+
+            <Button type="button" size="lg" onClick={handleSearch} className="md:h-12">
+              <Search className="h-4 w-4" />
+              Search
+            </Button>
+          </div>
+        </motion.div>
       </div>
     </section>
   );

@@ -10,6 +10,10 @@ export interface TourQuery {
   limit?: number;
   sort?: string;
   fields?: string;
+  /** ISO date (YYYY-MM-DD) — tours whose start date is on/after this. */
+  dateFrom?: string;
+  /** ISO date (YYYY-MM-DD) — tours whose start date is on/before this. */
+  dateTo?: string;
 }
 
 export interface TourListResult {

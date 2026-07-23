@@ -5,9 +5,10 @@ import { format } from "date-fns";
 import { Luggage, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/admin/PageHeader";
-import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
+import { SelectMenu } from "@/components/ui/SelectMenu";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { Pagination } from "@/components/ui/Pagination";
 import {
   BookingStatusBadge,
   PaymentStatusBadge,
@@ -22,7 +23,7 @@ import {
 } from "@/redux/features/booking/bookingApi";
 import type { BookingStatus, IBooking, IUser } from "@/types";
 
-const PAGE_SIZE = 15;
+const PAGE_SIZE = 10;
 const STATUSES: BookingStatus[] = ["PENDING", "COMPLETE", "CANCEL", "FAILED"];
 
 export default function AdminBookingsPage() {
@@ -57,22 +58,20 @@ export default function AdminBookingsPage() {
         title="Bookings"
         description="Every booking across all customers."
         action={
-          <Select
-            value={status}
-            aria-label="Filter by status"
-            onChange={(e) => {
-              setStatus(e.target.value as BookingStatus | "");
-              setPage(1);
-            }}
-            className="w-48"
-          >
-            <option value="">All statuses</option>
-            {STATUSES.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </Select>
+          <div className="w-48">
+            <SelectMenu
+              value={status}
+              aria-label="Filter by status"
+              onValueChange={(v) => {
+                setStatus(v as BookingStatus | "");
+                setPage(1);
+              }}
+              options={[
+                { value: "", label: "All statuses" },
+                ...STATUSES.map((s) => ({ value: s, label: s })),
+              ]}
+            />
+          </div>
         }
       />
 
@@ -186,28 +185,16 @@ export default function AdminBookingsPage() {
           </div>
 
           {totalPage > 1 && (
-            <div className="flex items-center justify-between border-t border-border px-4 py-3">
+            <div className="flex flex-col items-center gap-3 border-t border-border px-4 py-3 sm:flex-row sm:justify-between">
               <p className="text-sm text-muted-foreground">
                 Page {page} of {totalPage} · {data?.meta?.total} total
               </p>
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={page <= 1}
-                  onClick={() => setPage((p) => p - 1)}
-                >
-                  Previous
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={page >= totalPage}
-                  onClick={() => setPage((p) => p + 1)}
-                >
-                  Next
-                </Button>
-              </div>
+              <Pagination
+                page={page}
+                totalPages={totalPage}
+                onPageChange={setPage}
+                className="w-auto"
+              />
             </div>
           )}
         </div>

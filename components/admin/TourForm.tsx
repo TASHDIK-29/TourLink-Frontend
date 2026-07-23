@@ -2,13 +2,15 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { format } from "date-fns";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
-import { Select } from "@/components/ui/Select";
+import { SelectMenu } from "@/components/ui/SelectMenu";
+import { RangeCalendar, type DateRange } from "@/components/ui/RangeCalendar";
 import { ListField } from "./ListField";
 import { MultiImagePicker } from "./MultiImagePicker";
 import {
@@ -48,6 +50,8 @@ export function TourForm({ tour }: { tour?: ITour }) {
 
   const {
     register,
+    control,
+    setValue,
     handleSubmit,
     formState: { errors },
   } = useForm<TourFormValues>({
@@ -67,6 +71,14 @@ export function TourForm({ tour }: { tour?: ITour }) {
       endDate: toDateInput(tour?.endDate),
     },
   });
+
+  // The RangeCalendar drives the two underlying startDate/endDate form fields.
+  const startDate = useWatch({ control, name: "startDate" });
+  const endDate = useWatch({ control, name: "endDate" });
+  const dateRange: DateRange = {
+    from: startDate ? new Date(`${startDate}T00:00:00`) : undefined,
+    to: endDate ? new Date(`${endDate}T00:00:00`) : undefined,
+  };
 
   const toggleDelete = (url: string) =>
     setDeleteImages((prev) =>
@@ -151,31 +163,41 @@ export function TourForm({ tour }: { tour?: ITour }) {
         />
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <Select
-            label="Division"
-            error={errors.division?.message}
-            {...register("division")}
-          >
-            <option value="">Select a division…</option>
-            {divisions?.map((d) => (
-              <option key={d._id} value={d._id}>
-                {d.name}
-              </option>
-            ))}
-          </Select>
+          <Controller
+            name="division"
+            control={control}
+            render={({ field }) => (
+              <SelectMenu
+                label="Division"
+                value={field.value}
+                onValueChange={field.onChange}
+                error={errors.division?.message}
+                placeholder="Select a division…"
+                options={(divisions ?? []).map((d) => ({
+                  value: d._id,
+                  label: d.name,
+                }))}
+              />
+            )}
+          />
 
-          <Select
-            label="Tour type"
-            error={errors.tourType?.message}
-            {...register("tourType")}
-          >
-            <option value="">Select a tour type…</option>
-            {tourTypes?.map((t) => (
-              <option key={t._id} value={t._id}>
-                {getTourTypeName(t) || "(unnamed)"}
-              </option>
-            ))}
-          </Select>
+          <Controller
+            name="tourType"
+            control={control}
+            render={({ field }) => (
+              <SelectMenu
+                label="Tour type"
+                value={field.value}
+                onValueChange={field.onChange}
+                error={errors.tourType?.message}
+                placeholder="Select a tour type…"
+                options={(tourTypes ?? []).map((t) => ({
+                  value: t._id,
+                  label: getTourTypeName(t) || "(unnamed)",
+                }))}
+              />
+            )}
+          />
         </div>
 
         <Textarea
@@ -216,18 +238,22 @@ export function TourForm({ tour }: { tour?: ITour }) {
             error={errors.arrivalLocation?.message}
             {...register("arrivalLocation")}
           />
-          <Input
-            label="Start date"
-            type="date"
-            error={errors.startDate?.message}
-            {...register("startDate")}
-          />
-          <Input
-            label="End date"
-            type="date"
-            error={errors.endDate?.message}
-            {...register("endDate")}
-          />
+          <div className="sm:col-span-2">
+            <RangeCalendar
+              label="Travel dates"
+              placeholder="Pick start and end dates"
+              value={dateRange}
+              onChange={(r) => {
+                setValue("startDate", r.from ? format(r.from, "yyyy-MM-dd") : "", {
+                  shouldValidate: true,
+                });
+                setValue("endDate", r.to ? format(r.to, "yyyy-MM-dd") : "", {
+                  shouldValidate: true,
+                });
+              }}
+              error={errors.startDate?.message ?? errors.endDate?.message}
+            />
+          </div>
           <Input
             label="Max guests"
             type="number"
