@@ -11,9 +11,6 @@ MongoDB API — see [Tour-Management-Backend](https://github.com/TASHDIK-29/Tour
 
 ## 🔑 Try it yourself — demo Admin login
 
-This is a portfolio project, and the fastest way to see everything it does is
-to sign in as an admin — no registration needed.
-
 | | |
 |---|---|
 | **Email** | `super@gmail.com` |
