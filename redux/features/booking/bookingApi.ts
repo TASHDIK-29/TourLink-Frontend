@@ -1,9 +1,15 @@
 import { baseApi } from "@/redux/baseApi";
-import type { ApiResponse, IBooking, BookingStatus } from "@/types";
+import type {
+  ApiResponse,
+  IBooking,
+  BookingStatus,
+  GuideCategory,
+} from "@/types";
 
 export interface CreateBookingPayload {
   tour: string;
   guestCount: number;
+  guideCategory: GuideCategory;
 }
 
 /** createBooking returns the SSLCommerz gateway URL alongside the booking. */
@@ -71,6 +77,45 @@ export const bookingApi = baseApi.injectEndpoints({
       }),
       providesTags: ["Booking"],
     }),
+
+    // Trips a guide is assigned to lead (their own dashboard).
+    getGuideAssignments: builder.query<
+      BookingListResult,
+      { page?: number; limit?: number } | void
+    >({
+      query: (params) => ({
+        url: "/booking/guide-assignments",
+        params: params ?? undefined,
+      }),
+      transformResponse: (res: ApiResponse<IBooking[]>) => ({
+        bookings: res.data ?? [],
+        meta: res.meta,
+      }),
+      providesTags: ["Booking"],
+    }),
+
+    // Admin manually (re)assigns the guide leading a booking.
+    assignGuideToBooking: builder.mutation<
+      ApiResponse<IBooking>,
+      { id: string; guideId: string }
+    >({
+      query: ({ id, guideId }) => ({
+        url: `/booking/${id}/assign-guide`,
+        method: "PATCH",
+        body: { guideId },
+      }),
+      // Crediting/assigning touches guide counters too.
+      invalidatesTags: ["Booking", "Guide"],
+    }),
+
+    // Admin credits the trip to the assigned guide's guiding count.
+    confirmGuiding: builder.mutation<ApiResponse<IBooking>, string>({
+      query: (id) => ({
+        url: `/booking/${id}/confirm-guiding`,
+        method: "PATCH",
+      }),
+      invalidatesTags: ["Booking", "Guide"],
+    }),
   }),
 });
 
@@ -80,4 +125,7 @@ export const {
   useGetBookingByIdQuery,
   useUpdateBookingStatusMutation,
   useGetAllBookingsQuery,
+  useGetGuideAssignmentsQuery,
+  useAssignGuideToBookingMutation,
+  useConfirmGuidingMutation,
 } = bookingApi;

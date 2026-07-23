@@ -62,6 +62,44 @@ export interface ITour {
   createdAt?: string;
 }
 
+export type GuideStatus = "PENDING" | "APPROVED" | "REJECTED";
+
+/** Experience tier a traveller books; a guide's tier is derived from their count. */
+export type GuideCategory = "STANDARD" | "PREMIUM";
+
+/** Per-day guide fee (BDT) by category — mirrors the backend GUIDE_DAILY_RATE. */
+export const GUIDE_DAILY_RATE: Record<GuideCategory, number> = {
+  STANDARD: 300,
+  PREMIUM: 500,
+};
+
+/** More than this many completed guidings makes a guide PREMIUM. */
+export const GUIDE_CATEGORY_THRESHOLD = 20;
+
+export const guideCategoryFromCount = (count = 0): GuideCategory =>
+  count > GUIDE_CATEGORY_THRESHOLD ? "PREMIUM" : "STANDARD";
+
+/**
+ * A user's application to become a travel guide.
+ *
+ * On the admin list/detail routes the backend populates `user` (name/email/role)
+ * and `division` (name/slug); the apply response leaves them as bare id strings,
+ * hence the unions.
+ */
+export interface IGuideApplication {
+  _id: string;
+  user: string | Pick<IUser, "_id" | "name" | "email" | "role">;
+  nidPhoto: string;
+  division: string | Pick<IDivision, "_id" | "name" | "slug">;
+  status: GuideStatus;
+  /** Successful guidings credited by admins; drives the category tier. */
+  completedGuidings?: number;
+  approvedAt?: string;
+  lastAssignedAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export type BookingStatus = "PENDING" | "CANCEL" | "COMPLETE" | "FAILED";
 
 export type PaymentStatus =
@@ -91,6 +129,14 @@ export interface IBooking {
   payment?: IPayment | null;
   guestCount: number;
   status: BookingStatus;
+  /** Experience tier booked (STANDARD/PREMIUM) — required on every booking. */
+  guideCategory: GuideCategory;
+  /** Guide fee charged for the trip = daily rate × tour duration. */
+  guideCost: number;
+  /** Assigned guide (populated name/email), or null when none was available. */
+  guide?: string | Pick<IUser, "_id" | "name" | "email"> | null;
+  /** True once an admin credited this trip to the guide's guiding count. */
+  guidingConfirmed?: boolean;
   createdAt: string;
 }
 

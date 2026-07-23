@@ -10,6 +10,7 @@ import {
   MapPin,
   Menu,
   Tags,
+  UserCheck,
   LogOut,
   ExternalLink,
   X,
@@ -27,6 +28,7 @@ const NAV = [
   { href: "/admin/tours", label: "Tours", icon: Map },
   { href: "/admin/divisions", label: "Divisions", icon: MapPin },
   { href: "/admin/tour-types", label: "Tour Types", icon: Tags },
+  { href: "/admin/guides", label: "Guides", icon: UserCheck },
 ];
 
 /**

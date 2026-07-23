@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { format } from "date-fns";
-import { Luggage } from "lucide-react";
+import { Luggage, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { Button } from "@/components/ui/Button";
@@ -12,13 +12,15 @@ import {
   BookingStatusBadge,
   PaymentStatusBadge,
 } from "@/components/booking/BookingStatusBadge";
+import { AssignGuideModal } from "@/components/admin/AssignGuideModal";
+import { GuideInfoModal } from "@/components/admin/GuideInfoModal";
 import { formatCurrency } from "@/lib/utils";
 import { getApiErrorMessage } from "@/lib/apiError";
 import {
   useGetAllBookingsQuery,
   useUpdateBookingStatusMutation,
 } from "@/redux/features/booking/bookingApi";
-import type { BookingStatus, IUser } from "@/types";
+import type { BookingStatus, IBooking, IUser } from "@/types";
 
 const PAGE_SIZE = 15;
 const STATUSES: BookingStatus[] = ["PENDING", "COMPLETE", "CANCEL", "FAILED"];
@@ -26,6 +28,9 @@ const STATUSES: BookingStatus[] = ["PENDING", "COMPLETE", "CANCEL", "FAILED"];
 export default function AdminBookingsPage() {
   const [page, setPage] = useState(1);
   const [status, setStatus] = useState<BookingStatus | "">("");
+
+  const [assignTarget, setAssignTarget] = useState<IBooking | null>(null);
+  const [infoTarget, setInfoTarget] = useState<IBooking | null>(null);
 
   const { data, isLoading, isFetching } = useGetAllBookingsQuery({
     page,
@@ -91,7 +96,7 @@ export default function AdminBookingsPage() {
           }`}
         >
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[860px] text-sm">
+            <table className="w-full min-w-[1080px] text-sm">
               <thead className="border-b border-border bg-muted/50 text-left">
                 <tr>
                   <th className="px-4 py-3 font-medium">Customer</th>
@@ -100,6 +105,7 @@ export default function AdminBookingsPage() {
                   <th className="px-4 py-3 font-medium">Amount</th>
                   <th className="px-4 py-3 font-medium">Payment</th>
                   <th className="px-4 py-3 font-medium">Booking</th>
+                  <th className="px-4 py-3 font-medium">Guide</th>
                   <th className="px-4 py-3 text-right font-medium">Set status</th>
                 </tr>
               </thead>
@@ -145,6 +151,13 @@ export default function AdminBookingsPage() {
                       </td>
                       <td className="px-4 py-3">
                         <BookingStatusBadge status={booking.status} />
+                      </td>
+                      <td className="px-4 py-3">
+                        <GuideCell
+                          booking={booking}
+                          onAssign={() => setAssignTarget(booking)}
+                          onInfo={() => setInfoTarget(booking)}
+                        />
                       </td>
                       <td className="px-4 py-3">
                         <Select
@@ -199,6 +212,72 @@ export default function AdminBookingsPage() {
           )}
         </div>
       )}
+
+      <AssignGuideModal
+        booking={assignTarget}
+        onClose={() => setAssignTarget(null)}
+      />
+      <GuideInfoModal
+        booking={infoTarget}
+        onClose={() => setInfoTarget(null)}
+      />
     </>
+  );
+}
+
+/**
+ * Guide column: the guide's first name (a button opening their profile + credit
+ * action) and a reassign button. Unassigned bookings show an assign button.
+ */
+function GuideCell({
+  booking,
+  onAssign,
+  onInfo,
+}: {
+  booking: IBooking;
+  onAssign: () => void;
+  onInfo: () => void;
+}) {
+  const guide =
+    booking.guide && typeof booking.guide === "object" ? booking.guide : null;
+
+  if (!guide) {
+    return (
+      <button
+        type="button"
+        onClick={onAssign}
+        disabled={booking.guidingConfirmed}
+        className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-xs hover:bg-muted disabled:opacity-50"
+      >
+        <UserPlus className="h-3 w-3" />
+        Assign
+      </button>
+    );
+  }
+
+  // Only the first word of the name, per the compact column design.
+  const firstName = guide.name.split(" ")[0];
+
+  return (
+    <div className="flex items-center gap-2">
+      <button
+        type="button"
+        onClick={onInfo}
+        className="font-medium text-primary hover:underline"
+      >
+        {firstName}
+      </button>
+      <button
+        type="button"
+        onClick={onAssign}
+        disabled={booking.guidingConfirmed}
+        aria-label={`Reassign guide for ${firstName}`}
+        title={booking.guidingConfirmed ? "Credited — locked" : "Reassign"}
+        className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-1 text-xs hover:bg-muted disabled:opacity-50"
+      >
+        <UserPlus className="h-3 w-3" />
+        Reassign
+      </button>
+    </div>
   );
 }

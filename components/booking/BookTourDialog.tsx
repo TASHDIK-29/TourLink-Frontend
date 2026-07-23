@@ -5,19 +5,38 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Loader2, Lock, Minus, Plus, ShieldCheck } from "lucide-react";
+import { Award, Check, Loader2, Lock, Minus, Plus, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { formatCurrency } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 import { getApiErrorMessage } from "@/lib/apiError";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import { setUser } from "@/redux/features/auth/authSlice";
 import { useLazyGetMeQuery } from "@/redux/features/auth/authApi";
 import { useUpdateUserMutation } from "@/redux/features/user/userApi";
 import { useCreateBookingMutation } from "@/redux/features/booking/bookingApi";
-import type { ITour } from "@/types";
+import { GUIDE_DAILY_RATE, type GuideCategory, type ITour } from "@/types";
+
+/** Whole-day tour length for pricing the guide fee; mirrors the backend fallback. */
+function tourDurationDays(tour: ITour): number {
+  if (tour.startDate && tour.endDate) {
+    const ms = new Date(tour.endDate).getTime() - new Date(tour.startDate).getTime();
+    const days = Math.ceil(ms / (1000 * 60 * 60 * 24));
+    return days > 0 ? days : 1;
+  }
+  return 1;
+}
+
+const GUIDE_TIERS: {
+  value: GuideCategory;
+  label: string;
+  blurb: string;
+}[] = [
+  { value: "STANDARD", label: "Standard guide", blurb: "Up to 20 guidings" },
+  { value: "PREMIUM", label: "Premium guide", blurb: "20+ guidings, most experienced" },
+];
 
 /** Same rule as the backend's updateUserZodSchema. */
 const profileSchema = z.object({
@@ -48,6 +67,7 @@ export function BookTourDialog({
   const user = useAppSelector((s) => s.auth.user);
 
   const [guestCount, setGuestCount] = useState(1);
+  const [guideCategory, setGuideCategory] = useState<GuideCategory>("STANDARD");
   const [createBooking, { isLoading: booking }] = useCreateBookingMutation();
   const [updateUser, { isLoading: savingProfile }] = useUpdateUserMutation();
   const [fetchMe] = useLazyGetMeQuery();
@@ -67,7 +87,14 @@ export function BookTourDialog({
 
   const maxGuests = tour.maxGuest ?? 20;
   const unitPrice = tour.costFrom ?? 0;
-  const total = unitPrice * guestCount;
+  const toursTotal = unitPrice * guestCount;
+
+  // Guide fee = chosen tier's daily rate × the tour's length, matching the
+  // backend calculation so the preview equals what will be charged.
+  const durationDays = tourDurationDays(tour);
+  const guideRate = GUIDE_DAILY_RATE[guideCategory];
+  const guideCost = guideRate * durationDays;
+  const total = toursTotal + guideCost;
 
   const saveProfile = async (values: ProfileValues) => {
     if (!user) return;
@@ -86,6 +113,7 @@ export function BookTourDialog({
       const res = await createBooking({
         tour: tour._id,
         guestCount,
+        guideCategory,
       }).unwrap();
 
       const paymentUrl = res.data?.paymentUrl;
@@ -202,13 +230,67 @@ export function BookTourDialog({
             </div>
           </div>
 
+          <div>
+            <span className="mb-1.5 block text-sm font-medium">Guide</span>
+            <div className="grid grid-cols-2 gap-3">
+              {GUIDE_TIERS.map((tier) => {
+                const selected = guideCategory === tier.value;
+                return (
+                  <button
+                    key={tier.value}
+                    type="button"
+                    aria-pressed={selected}
+                    onClick={() => setGuideCategory(tier.value)}
+                    className={cn(
+                      "relative rounded-xl border p-3 text-left transition-colors",
+                      selected
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:bg-muted",
+                    )}
+                  >
+                    {selected && (
+                      <Check className="absolute right-2 top-2 h-4 w-4 text-primary" />
+                    )}
+                    <span className="flex items-center gap-1.5 text-sm font-semibold">
+                      {tier.value === "PREMIUM" && (
+                        <Award className="h-3.5 w-3.5 text-primary" />
+                      )}
+                      {tier.label}
+                    </span>
+                    <span className="mt-0.5 block text-xs text-muted-foreground">
+                      {tier.blurb}
+                    </span>
+                    <span className="mt-1.5 block text-sm font-medium">
+                      {formatCurrency(GUIDE_DAILY_RATE[tier.value])}
+                      <span className="text-xs font-normal text-muted-foreground">
+                        {" "}
+                        / day
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            <p className="mt-1.5 text-xs text-muted-foreground">
+              A guide from this tour&apos;s region is assigned automatically. If
+              none is free right now, an admin assigns one shortly.
+            </p>
+          </div>
+
           <dl className="space-y-2 rounded-xl bg-muted/60 p-4 text-sm">
             <div className="flex justify-between">
               <dt className="text-muted-foreground">
                 {formatCurrency(unitPrice)} × {guestCount} guest
                 {guestCount === 1 ? "" : "s"}
               </dt>
-              <dd>{formatCurrency(total)}</dd>
+              <dd>{formatCurrency(toursTotal)}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-muted-foreground">
+                Guide · {formatCurrency(guideRate)} × {durationDays} day
+                {durationDays === 1 ? "" : "s"}
+              </dt>
+              <dd>{formatCurrency(guideCost)}</dd>
             </div>
             <div className="flex justify-between border-t border-border pt-2 text-base font-semibold">
               <dt>Total</dt>

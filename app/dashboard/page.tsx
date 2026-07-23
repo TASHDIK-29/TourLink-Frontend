@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Compass, Luggage, Wallet } from "lucide-react";
+import { Compass, Luggage, Wallet, Waypoints } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { formatCurrency } from "@/lib/utils";
@@ -73,6 +73,27 @@ export default function DashboardPage() {
           </Button>
         </Link>
       </div>
+
+      {/* Only travellers (USER) can apply; guides and admins have their own areas. */}
+      {user?.role === "USER" && (
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-card border border-border bg-gradient-to-br from-primary/10 to-transparent p-6">
+          <div className="flex items-start gap-3">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
+              <Waypoints className="h-5 w-5" />
+            </span>
+            <div>
+              <h2 className="font-semibold">Become a guide</h2>
+              <p className="mt-1 max-w-md text-sm text-muted-foreground">
+                Know a region well? Apply to lead tours and share the places you
+                love with travellers.
+              </p>
+            </div>
+          </div>
+          <Link href="/dashboard/guide">
+            <Button size="sm">Apply now</Button>
+          </Link>
+        </div>
+      )}
     </div>
   );
 }
